@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="https://github.com/ssambender/3ds-mpo-gif/blob/main/icon.png?raw=true" height="200px">
+    <img src="https://3dswigglegram.com/icon.png" height="200px">
 </div>
 
 <h1 align="center">3DS Wigglegram</h1>
