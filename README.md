@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="https://3dswigglegram.com/icon.png" height="200px">
+    <img src="icon.png" height="200px">
 </div>
 
 <h1 align="center">3DS Wigglegram</h1>
@@ -7,10 +7,10 @@
 <h3 align="center">Create and view wigglegram gifs from .mpo files. Designed to work with files from the Nintendo 3DS.</h3>
 
 <div align="center">
-    <img src="https://github.com/ssambender/3ds-mpo-gif/blob/main/sam_wigglegram_100.gif?raw=true" height="300px"> <img src="https://github.com/ssambender/3ds-mpo-gif/blob/main/DQ_wigglegram_100.gif?raw=true" height="300px">
-    <img src="https://github.com/ssambender/3ds-mpo-gif/blob/main/rose_wigglegram_100.gif?raw=true" height="300px"> <img src="https://github.com/ssambender/3ds-mpo-gif/blob/main/peace_wigglegram_100.gif?raw=true" height="300px"><br>
+    <img src="sam_wigglegram_100.gif" height="300px"> <img src="DQ_wigglegram_100.gif" height="300px">
+    <img src="rose_wigglegram_100.gif" height="300px"> <img src="peace_wigglegram_100.gif" height="300px"><br>
     Comparison of 3D anaglyph & GIF:<br>
-    <img src="https://github.com/ssambender/3ds-mpo-gif/blob/main/HNI_0077_anaglyph.png?raw=true" height="300px"> <img src="https://github.com/ssambender/3ds-mpo-gif/blob/main/HNI_0077_wigglegram-ezgif.com-rotate.gif?raw=true" height="300px">
+    <img src="HNI_0077_anaglyph.png" height="300px"> <img src="HNI_0077_wigglegram-ezgif.com-rotate.gif" height="300px">
 </div>
 
 <h3 align="center">
