@@ -319,11 +319,21 @@ body {
 #differenceContainer {
     display: flex;
     justify-content: center;
+    align-items: center;
     margin: 8px 0 12px 0;
+}
+#previewCanvasStack {
+    position: relative;
+    overflow: hidden;
 }
 #canvas_overlap {
     position: absolute;
     mix-blend-mode: difference;
+    left: 0;
+    top: 0;
+}
+#canvas_bottom {
+    display: block;
 }
 
 /* Frame length input */
@@ -375,9 +385,10 @@ body {
     background-color: #222222;
     border-radius: 25px;
     color: #f0f0f0;
-    padding: 0 160px 24px 160px;
+    padding: 0 clamp(24px, 8vw, 160px) 24px clamp(24px, 8vw, 160px);
     overflow: hidden;
     position: relative;
+    max-width: 96vw;
 }
 
 /* GIF that gets shown */
@@ -388,7 +399,8 @@ body {
     user-select: none;
 }
 #viewGIF img {
-    transform: scale(0.8);
+    max-width: 90vw;
+    max-height: 70vh;
     border: solid 3px #ffffff;
     box-sizing: border-box;
     border-radius: 20px;

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>3DS Wigglegram</title>
+    <title>Wigglegram Generator (3DS Compatible)</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="icon.png">
     <link rel="apple-touch-icon" href="icon.png">
@@ -25,8 +25,9 @@
     <div id="backgroundStars"></div>
 </div>
 
-<div id="creditsBottom">
-    <a href="https://sambender.net" target="_blank">Sam Bender 2024</a>
+<div id="creditsBottom" style="display: flex; flex-direction: column; gap: 5px;">
+    <div id="versionNum">v2.0.0</div>
+    <a href="https://lsblackburn.co.uk" target="_blank">lsblackburn 2026</a>
 </div>
 
 <!-- INSTRUCTIONS MODAL -->
@@ -64,7 +65,7 @@
                 <div class="mainInstruction">
                     <img src="step3.png">
                     <div class="explain">
-                        On the website, open the .MPO file. Drag the adjustment slider until the focal point of your image is as black as it can be. Pick frame length ms.
+                        On the website, open an .MPO file or select two matching .JPG/.PNG files. Drag the adjustment slider until the focal point of your image is as black as it can be. Pick frame length ms.
                     </div>
                 </div>
             </div>
@@ -91,14 +92,13 @@
 
 <!-- IMAGE UPLOAD BUTTON -->
 <div id="initialModal">
-    <!--            major.minor.patch -->
-    <div id="versionNum">v1.9.0</div><!-- major: compatibility | minor: git push | minor: change not pushed to git -->
+
     <div class="mainPopup">
         <div class="mainText">
-            3DS Wigglegram Maker from .MPO<br>
+            Wigglegram Generator (3DS Compatible)<br>
 
             <div class="subText">
-                Upload an <b>.mpo</b> image taken from a 3DS (or other stereoscopic device) and magically create a Wigglegram GIF!<br><br>
+                Upload an <b>.mpo</b> image taken from a 3DS, or select two matching <b>.jpg/.png</b> images, and magically create a full-resolution Wigglegram GIF!<br><br>
                 <span style="opacity: 50%;"><i>*All data is processed locally and is not sent/saved online.</i></span>
             </div>
 
@@ -107,7 +107,7 @@
             <button id="upload-mpo-btn" type="button" class="main-btn" onclick="triggerFileUpload()">
                 <div class="main-btn-pattern"></div>
                 <div class="main-btn-fade"></div>
-                <span class="main-btn-text inter-font" style="text-transform: uppercase;">Upload .MPO File</span>
+                <span class="main-btn-text inter-font" style="text-transform: uppercase;">Upload Image File(s)</span>
             </button>
 
             <div class="buttonsRow2">
@@ -126,12 +126,12 @@
         </div>
     </div>
 </div>
-<input id="imageUpload" type="file" accept=".mpo" onchange='loadImg(event)' style="display: none;">
+<input id="imageUpload" type="file" accept=".mpo,.jpg,.jpeg,.png,image/jpeg,image/png" multiple onchange='loadImg(event)' style="display: none;">
 
 <!-- SPLIT L/R IMAGES (HIDDEN) -->
 <div style="display:none;">
-    <canvas id="canvas_left" width="640px" height="480px" style="border: solid 2px blue;"></canvas>
-    <canvas id="canvas_right" width="640px" height="480px" style="border: solid 2px red;"></canvas>
+    <canvas id="canvas_left" style="border: solid 2px blue;"></canvas>
+    <canvas id="canvas_right" style="border: solid 2px red;"></canvas>
 </div>
 
 <!-- GIF CREATE/VIEW SCREEN -->
@@ -150,8 +150,10 @@
         <div id="differenceContainer">
             <input id="adjustOverlapVert" type="range" min="-20" max="20" orient="vertical">
             <span id="adjustAmountLabelVert" style="position: absolute;">0px</span>
-            <canvas id="canvas_overlap" width="640px" height="480px"></canvas>
-            <canvas id="canvas_bottom" width="640px" height="480px"></canvas>
+            <div id="previewCanvasStack">
+                <canvas id="canvas_overlap"></canvas>
+                <canvas id="canvas_bottom"></canvas>
+            </div>
         </div>
         <!-- FRAME LENGTH -->
         <div id="frameLengthContainer">
@@ -199,9 +201,9 @@
 
 <!-- CROPPED FRAMES (HIDDEN) -->
 <div style="display: none; z-index: -1; position: absolute; flex-direction: column">
-    <canvas id="canvas_cropped1" width="960px" height="480px" style="border: solid 2px black;"></canvas><br>
-    <canvas id="canvas_cropped2" width="960px" height="480px" style="border: solid 2px black;"></canvas><br>
-    <canvas id="canvas_cropped3" width="960px" height="480px" style="border: solid 2px black;"></canvas><br>
+    <canvas id="canvas_cropped1" style="border: solid 2px black;"></canvas><br>
+    <canvas id="canvas_cropped2" style="border: solid 2px black;"></canvas><br>
+    <canvas id="canvas_cropped3" style="border: solid 2px black;"></canvas><br>
 </div>
 
 <div id="customMouse"><img src="hand-cursor.png"></div>
@@ -235,6 +237,7 @@
     // Forked from k-hatano - https://github.com/k-hatano/stereo_viewer_js
     var canvasWidth = 640;
     var canvasHeight = 480;
+    let previewScale = 1;
 
     let imageName = "";
     let overlayOffset = 0;
@@ -253,40 +256,148 @@
     };
 
     // Function for when a valid image file is uploaded
-    function loadImg(event) {
-        var file = event.target.files[0];
-        var reader = new FileReader();
-        reader.readAsBinaryString(file);
+    async function loadImg(event) {
+        const files = Array.from(event.target.files);
+        if(files.length === 0) {
+            return;
+        }
 
-        reader.onload = function() {
-            imageName = file.name.toString().split('.')[0];
-            let result = splitImageToLeftRight(reader.result);
+        document.getElementById('loading').style.display = 'flex';
+        document.getElementById('initialModal').style.display = 'none';
 
-            // todo - wait for the result before setting the src (below) instead of waiting a length/time
+        try {
+            const result = await loadStereoImage(files);
+            imageName = result.name;
 
-            leftImage.src = result[1];  // should be 1
-            rightImage.src = result[0];  // should be 0
+            leftImage.src = result.left;
+            rightImage.src = result.right;
+            await Promise.all([imageLoaded(leftImage), imageLoaded(rightImage)]);
 
+            canvasWidth = Math.min(leftImage.naturalWidth, rightImage.naturalWidth);
+            canvasHeight = Math.min(leftImage.naturalHeight, rightImage.naturalHeight);
+            configureCanvases();
+            drawCanvas();
+            resetAdjustments();
 
-            document.getElementById('loading').style.display = 'flex';  // display loading
-            setTimeout(function(){
-                drawCanvas();
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('secondScreenContainer').style.display = 'flex';
+            document.getElementById('background2').style.display = "flex";
 
-                document.getElementById('loading').style.display = 'none';  // hide loading
+            window.onbeforeunload = function(e) {return 'Reload page? Progress will not be saved';};  // page reload confirmation
+        }
+        catch(error) {
+            console.error(error);
+            alert(error.message || 'Could not load that image.');
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('initialModal').style.display = 'flex';
+        }
+    }
 
-                document.getElementById('secondScreenContainer').style.display = 'flex';
-                document.getElementById('background2').style.display = "flex";
-                //document.getElementById('differenceControl').style.display = 'flex';
-                //document.getElementById('differenceContainer').style.display = 'flex';
-                //document.getElementById('frameLengthContainer').style.display = 'flex';
-                //document.getElementById('differenceLabel').style.display = 'flex';
-                //document.getElementById('createGifContainer').style.display = 'flex';
+    function imageLoaded(image) {
+        if(image.complete && image.naturalWidth > 0) {
+            return Promise.resolve();
+        }
+        return new Promise(function(resolve, reject) {
+            image.onload = resolve;
+            image.onerror = function() {
+                reject(new Error('Could not decode one of the stereo images.'));
+            };
+        });
+    }
 
-                window.onbeforeunload = function(e) {return 'Reload page? Progress will not be saved';};  // page reload confirmation
-            }, 654);
+    async function loadStereoImage(files) {
+        const file = files[0];
+        const extension = file.name.split('.').pop().toLowerCase();
+        if(extension === 'mpo') {
+            if(files.length !== 1) {
+                throw new Error('Please select only one MPO file.');
+            }
+            const buffer = await file.arrayBuffer();
+            const result = splitMpoToLeftRight(buffer);
+            if(result.length < 2) {
+                throw new Error('This MPO file does not contain two JPEG images.');
+            }
+            return {
+                left: result[1],
+                right: result[0],
+                name: file.name.toString().replace(/\.[^/.]+$/, '')
+            };
+        }
 
-            document.getElementById('initialModal').style.display = 'none';
-        };
+        if(files.every(isRasterImageFile)) {
+            if(files.length !== 2) {
+                throw new Error('Please select two JPG/PNG images: left image first, right image second.');
+            }
+            return {
+                left: await fileToDataUrl(files[0]),
+                right: await fileToDataUrl(files[1]),
+                name: files[0].name.toString().replace(/\.[^/.]+$/, '')
+            };
+        }
+
+        throw new Error('Please upload one MPO file, or two JPG/PNG files.');
+    }
+
+    function isRasterImageFile(file) {
+        const extension = file.name.split('.').pop().toLowerCase();
+        return ['jpg', 'jpeg', 'png'].includes(extension) || ['image/jpeg', 'image/png'].includes(file.type);
+    }
+
+    function fileToDataUrl(file) {
+        return new Promise(function(resolve, reject) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                resolve(reader.result);
+            };
+            reader.onerror = function() {
+                reject(new Error('Could not read one of the selected JPG/PNG images.'));
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function configureCanvases() {
+        ['canvas_left', 'canvas_right', 'canvas_bottom', 'canvas_overlap'].forEach(function(id) {
+            const canvas = document.getElementById(id);
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+        });
+
+        const maxPreviewWidth = Math.min(window.innerWidth * 0.72, 900);
+        const maxPreviewHeight = Math.min(window.innerHeight * 0.48, 540);
+        previewScale = Math.min(1, maxPreviewWidth / canvasWidth, maxPreviewHeight / canvasHeight);
+        const previewWidth = Math.max(1, Math.round(canvasWidth * previewScale));
+        const previewHeight = Math.max(1, Math.round(canvasHeight * previewScale));
+
+        ['canvas_bottom', 'canvas_overlap'].forEach(function(id) {
+            const canvas = document.getElementById(id);
+            canvas.style.width = previewWidth + 'px';
+            canvas.style.height = previewHeight + 'px';
+        });
+
+        const previewCanvasStack = document.getElementById('previewCanvasStack');
+        previewCanvasStack.style.width = previewWidth + 'px';
+        previewCanvasStack.style.height = previewHeight + 'px';
+
+        const horizontalSlider = document.getElementById('adjustOverlap');
+        const maxHorizontalAdjust = Math.max(1, Math.floor(canvasWidth / 2));
+        horizontalSlider.min = -maxHorizontalAdjust;
+        horizontalSlider.max = maxHorizontalAdjust;
+        horizontalSlider.value = 0;
+        horizontalSlider.style.width = Math.min(500, previewWidth) + 'px';
+
+        const verticalSlider = document.getElementById('adjustOverlapVert');
+        const maxVerticalAdjust = Math.max(1, Math.floor(canvasHeight / 4));
+        verticalSlider.min = -maxVerticalAdjust;
+        verticalSlider.max = maxVerticalAdjust;
+        verticalSlider.value = 0;
+    }
+
+    function resetAdjustments() {
+        overlayOffset = 0;
+        verticalOffset = 0;
+        adjustChanged();
+        adjustChangedVert();
     }
 
     // Draw 2d images to canvas
@@ -309,21 +420,22 @@
     }
 
     // Takes input .MPO image and converts it to 2 separate images (L/R)
-    function splitImageToLeftRight(source) {
+    function splitMpoToLeftRight(buffer) {
+        const source = new Uint8Array(buffer);
         var indexPair = [];
         var depth = 0;
         var startIndex = 0;
 
         for (var i = 0; i < source.length; i++) {
 
-            if (source.charCodeAt(i) === 0xff && source.charCodeAt(i + 1) === 0xd8) {
+            if (source[i] === 0xff && source[i + 1] === 0xd8) {
                 if (depth === 0) {
                     startIndex = i;
                 }
                 depth++;
                 i++;
             }
-            if (source.charCodeAt(i) === 0xff && source.charCodeAt(i + 1) === 0xd9) {
+            if (source[i] === 0xff && source[i + 1] === 0xd9) {
                 depth--;
                 if (depth === 0) {
                     indexPair.push({start:startIndex, end:i + 2});
@@ -334,19 +446,28 @@
 
         var result = [];
         for (var j = 0; j < indexPair.length; j++) {
-            var image = source.substring(indexPair[j].start, indexPair[j].end);
-            var imageUrl = 'data:image/jpeg;base64,' + btoa(image);
+            var image = source.slice(indexPair[j].start, indexPair[j].end);
+            var imageUrl = 'data:image/jpeg;base64,' + bytesToBase64(image);
 
             result.push(imageUrl);
         }
         return result;
     }
 
+    function bytesToBase64(bytes) {
+        let binary = '';
+        const chunkSize = 0x8000;
+        for(let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, i + chunkSize);
+            binary += String.fromCharCode.apply(null, chunk);
+        }
+        return btoa(binary);
+    }
     // Range slider to adjust overlay
     function adjustChanged() {
-        document.getElementById("canvas_overlap").style.marginLeft = document.getElementById('adjustOverlap').value.toString() + "px";
+        overlayOffset = parseInt(document.getElementById('adjustOverlap').value, 10) || 0;
+        document.getElementById("canvas_overlap").style.transform = `translate(${overlayOffset * previewScale}px, ${verticalOffset * -previewScale}px)`;
         document.getElementById('adjustAmountLabel').innerText = document.getElementById('adjustOverlap').value.toString() + "px";
-        overlayOffset = document.getElementById('adjustOverlap').value / 2;
     }
     document.getElementById('adjustOverlap').addEventListener("input", function() {
         adjustChanged();
@@ -363,9 +484,9 @@
     })
 
     function adjustChangedVert() {
-        document.getElementById("canvas_overlap").style.marginTop = (document.getElementById('adjustOverlapVert').value * -1).toString() + "px";
+        verticalOffset = parseInt(document.getElementById('adjustOverlapVert').value, 10) || 0;
+        document.getElementById("canvas_overlap").style.transform = `translate(${overlayOffset * previewScale}px, ${verticalOffset * -previewScale}px)`;
         document.getElementById('adjustAmountLabelVert').innerText = document.getElementById('adjustOverlapVert').value.toString() + "px";
-        verticalOffset = document.getElementById('adjustOverlapVert').value;
     }
     document.getElementById('adjustOverlapVert').addEventListener("input", function() {
         adjustChangedVert();
@@ -392,94 +513,49 @@
         var frame_crop1 = document.getElementById('canvas_cropped1');
         var frame_crop2 = document.getElementById('canvas_cropped2');
         var frame_crop3 = document.getElementById('canvas_cropped3');
-        let crop_width;
-        let crop_height = 480 - Math.abs(verticalOffset);  // height
-        let overlapRight = true;
-        let moveUp = true;  // height
-        if(overlayOffset > 0){
-            crop_width = (160 + canvasWidth) - (160 + parseInt(overlayOffset));
+        let crop_width = canvasWidth - Math.abs(overlayOffset);
+        let crop_height = canvasHeight - Math.abs(verticalOffset);
+
+        if(crop_width < 1 || crop_height < 1) {
+            throw new Error('The adjustment is larger than the usable image area.');
         }
-        else {
-            crop_width = (160 + canvasWidth + parseInt(overlayOffset)) - 160;
-            overlapRight = false;
-        }
-        if(verticalOffset < 0) {
-            moveUp = false;
-        }
+
         frame_crop1.width = crop_width;
-        frame_crop1.height = crop_height;  // height
+        frame_crop1.height = crop_height;
         frame_crop2.width = crop_width;
-        frame_crop2.height = crop_height;  // height
+        frame_crop2.height = crop_height;
         frame_crop3.width = crop_width;
-        frame_crop3.height = crop_height;  // height
+        frame_crop3.height = crop_height;
 
-        var ctx_crop1 = frame_crop1.getContext('2d');
-        ctx_crop1.clearRect(0, 0, crop_width, crop_height);  //parseInt(overlayOffset)
-        if(overlapRight) {
-            if(moveUp) {
-                ctx_crop1.drawImage(leftImage, 0 - parseInt(overlayOffset), 0, canvasWidth, canvasHeight);  // no change
-            }
-            else {
-                ctx_crop1.drawImage(leftImage, 0 - parseInt(overlayOffset), Math.abs(verticalOffset) * -1, canvasWidth, canvasHeight);  // changed
-            }
-        }
-        else {
-            if(moveUp) {
-                ctx_crop1.drawImage(leftImage, 0, 0, canvasWidth, canvasHeight);  // no change
-            }
-            else {
-                ctx_crop1.drawImage(leftImage, 0, Math.abs(verticalOffset) * -1, canvasWidth, canvasHeight);  // changed
-            }
-        }
+        const rightX = overlayOffset;
+        const rightY = verticalOffset * -1;
+        const cropStartX = Math.max(0, rightX);
+        const cropStartY = Math.max(0, rightY);
+        const leftDrawX = cropStartX * -1;
+        const leftDrawY = cropStartY * -1;
+        const rightDrawX = rightX - cropStartX;
+        const rightDrawY = rightY - cropStartY;
 
-        var ctx_crop2 = frame_crop2.getContext('2d');
-        ctx_crop2.clearRect(0, 0, crop_width, canvasHeight);
-        ctx_crop2.globalAlpha = 1;
-        if(overlapRight) {
-            if(moveUp) {
-                ctx_crop2.drawImage(leftImage, 0 - parseInt(overlayOffset), 0, canvasWidth, canvasHeight); //no change
-                ctx_crop2.globalAlpha = 0.5;
-                ctx_crop2.drawImage(rightImage, 0, Math.abs(verticalOffset) * -1, canvasWidth, canvasHeight); //changed
+        function drawAlignedFrame(ctx, leftAlpha, rightAlpha) {
+            ctx.clearRect(0, 0, crop_width, crop_height);
+            ctx.globalAlpha = leftAlpha;
+            if(leftAlpha > 0) {
+                ctx.drawImage(leftImage, leftDrawX, leftDrawY, canvasWidth, canvasHeight);
             }
-            else {
-                ctx_crop2.drawImage(leftImage, 0 - parseInt(overlayOffset), Math.abs(verticalOffset) * -1, canvasWidth, canvasHeight); //changed
-                ctx_crop2.globalAlpha = 0.5;
-                ctx_crop2.drawImage(rightImage, 0, 0, canvasWidth, canvasHeight); //no change
+            ctx.globalAlpha = rightAlpha;
+            if(rightAlpha > 0) {
+                ctx.drawImage(rightImage, rightDrawX, rightDrawY, canvasWidth, canvasHeight);
             }
-        }
-        else {
-            if(moveUp) {
-                ctx_crop2.drawImage(leftImage, 0, 0, canvasWidth, canvasHeight);  //no change
-                ctx_crop2.globalAlpha = 0.5;
-                ctx_crop2.drawImage(rightImage, parseInt(overlayOffset), Math.abs(verticalOffset) * -1, canvasWidth, canvasHeight);  //changed
-            }
-            else {
-                ctx_crop2.drawImage(leftImage, 0, Math.abs(verticalOffset) * -1, canvasWidth, canvasHeight);  //changed
-                ctx_crop2.globalAlpha = 0.5;
-                ctx_crop2.drawImage(rightImage, parseInt(overlayOffset), 0, canvasWidth, canvasHeight);  //no change
-            }
+            ctx.globalAlpha = 1;
         }
 
-        var ctx_crop3 = frame_crop3.getContext('2d');
-        ctx_crop3.clearRect(0, 0, crop_width, canvasHeight);
-        if(overlapRight) {
-            if(moveUp) {
-                ctx_crop3.drawImage(rightImage, 0, Math.abs(verticalOffset) * -1, canvasWidth, canvasHeight);
-            }
-            else {
-                ctx_crop3.drawImage(rightImage, 0, 0, canvasWidth, canvasHeight); // no change
-            }
-        }
-        else {
-            if(moveUp) {
-                ctx_crop3.drawImage(rightImage, parseInt(overlayOffset), Math.abs(verticalOffset) * -1, canvasWidth, canvasHeight);
-            }
-            else {
-                ctx_crop3.drawImage(rightImage, parseInt(overlayOffset), 0, canvasWidth, canvasHeight); // no change
-            }
-        }
-        console.log({moveUp});
-        console.log({overlapRight});
+        const ctx_crop1 = frame_crop1.getContext('2d');
+        const ctx_crop2 = frame_crop2.getContext('2d');
+        const ctx_crop3 = frame_crop3.getContext('2d');
+
+        drawAlignedFrame(ctx_crop1, 1, 0);
+        drawAlignedFrame(ctx_crop2, 1, 0.5);
+        drawAlignedFrame(ctx_crop3, 0, 1);
 
         var encoder = new GIFEncoder();
         encoder.setRepeat(0);
