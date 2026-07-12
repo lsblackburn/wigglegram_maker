@@ -42,11 +42,11 @@
                 <div class="mainInstruction">
                     <div class="stepBadge">1</div>
                     <div class="explain">
-                        Take photos on 3DS as normal, or locate previously taken photos. Try to keep the camera as horizontal as possible for best results!
+                        Choose your source images. You can use one 3DS .MPO file, two matching JPG/PNG images, or three matching JPG/PNG images from a Nimslo-style camera.
                     </div>
                 </div>
                 <div style="padding-top: 6px; opacity: 65%;">
-                    Optional: Enable the camera level by pressing down on the D-PAD
+                    Keep the camera as level as possible for the cleanest wiggle.
                 </div>
             </div>
             <div class="instructDivider"></div>
@@ -54,11 +54,11 @@
                 <div class="mainInstruction">
                     <div class="stepBadge">2</div>
                     <div class="explain">
-                        If not already on the SD card, save the photos to the SD card. Load the images onto your computer or phone either by SD card or FTP.
+                        For 3DS photos, upload a single .MPO file. If needed, copy it from the SD card or transfer it by FTP first.
                     </div>
                 </div>
                 <div style="padding-top: 6px; opacity: 65%;">
-                    (Photos can be found in the DCIM folder)
+                    3DS photos can usually be found in the DCIM folder.
                 </div>
             </div>
             <div class="instructDivider"></div>
@@ -66,7 +66,7 @@
                 <div class="mainInstruction">
                     <div class="stepBadge">3</div>
                     <div class="explain">
-                        On the website, open an .MPO file or select two matching .JPG/.PNG files. Drag the adjustment slider until the focal point of your image is as black as it can be. Pick frame length and interpolation settings.
+                        For two-image uploads, select the left image first and the right image second. The app can add an optional blended interpolation frame between them.
                     </div>
                 </div>
             </div>
@@ -75,7 +75,25 @@
                 <div class="mainInstruction">
                     <div class="stepBadge">4</div>
                     <div class="explain">
-                        View & Download your wigglegram as a GIF with the respective buttons. Frame length time can be changed here as well to your liking.
+                        For three-image uploads, select the images in order: left, middle, right. The app uses the real middle image as the middle frame.
+                    </div>
+                </div>
+            </div>
+            <div class="instructDivider"></div>
+            <div class="instructStep">
+                <div class="mainInstruction">
+                    <div class="stepBadge">5</div>
+                    <div class="explain">
+                        After uploading, drag the adjustment sliders until the focal point is as dark as possible. Then choose frame length and create your GIF.
+                    </div>
+                </div>
+            </div>
+            <div class="instructDivider"></div>
+            <div class="instructStep">
+                <div class="mainInstruction">
+                    <div class="stepBadge">6</div>
+                    <div class="explain">
+                        View and download your wigglegram as a GIF. You can also go back to readjust alignment before downloading.
                     </div>
                 </div>
             </div>
@@ -99,7 +117,7 @@
             Wigglegram Generator (3DS Compatible)<br>
 
             <div class="subText">
-                Upload an <b>.mpo</b> image taken from a 3DS, or select two matching <b>.jpg/.png</b> images, and magically create a full-resolution Wigglegram GIF!<br><br>
+                Upload an <b>.mpo</b> image taken from a 3DS, or select two/three matching <b>.jpg/.png</b> images, and magically create a full-resolution Wigglegram GIF!<br><br>
                 <span style="opacity: 50%;"><i>*All data is processed locally and is not sent/saved online.</i></span>
             </div>
 
@@ -112,7 +130,7 @@
             </button>
 
             <div class="buttonsRow2">
-                <button type="button" class="main-btn" onclick="window.open('https://github.com/ssambender/3ds-mpo-gif');">
+                <button type="button" class="main-btn" onclick="window.open('https://github.com/lsblackburn/wigglegram_maker');">
                     <div class="main-btn-pattern"></div>
                     <div class="main-btn-fade"></div>
                     <span class="main-btn-text inter-font">View GitHub</span>
@@ -236,6 +254,7 @@
     let includeInterpolationFrame = true;
 
     var leftImage = new Image();
+    var middleImage = null;
     var rightImage = new Image();
 
     const colors = ['#f34132', '#ffac00', '#5394ce', '#a66fef', '#6bce71'];
@@ -261,14 +280,21 @@
             imageName = result.name;
 
             leftImage.src = result.left;
+            middleImage = result.middle ? new Image() : null;
+            if(middleImage) {
+                middleImage.src = result.middle;
+            }
             rightImage.src = result.right;
-            await Promise.all([imageLoaded(leftImage), imageLoaded(rightImage)]);
 
-            canvasWidth = Math.min(leftImage.naturalWidth, rightImage.naturalWidth);
-            canvasHeight = Math.min(leftImage.naturalHeight, rightImage.naturalHeight);
+            const imagesToLoad = middleImage ? [leftImage, middleImage, rightImage] : [leftImage, rightImage];
+            await Promise.all(imagesToLoad.map(imageLoaded));
+
+            canvasWidth = Math.min(...imagesToLoad.map(function(image) { return image.naturalWidth; }));
+            canvasHeight = Math.min(...imagesToLoad.map(function(image) { return image.naturalHeight; }));
             configureCanvases();
             drawCanvas();
             resetAdjustments();
+            updateFrameSettingsForImageSet();
 
             document.getElementById('loading').style.display = 'none';
             document.getElementById('secondScreenContainer').style.display = 'flex';
@@ -316,17 +342,18 @@
         }
 
         if(files.every(isRasterImageFile)) {
-            if(files.length !== 2) {
-                throw new Error('Please select two JPG/PNG images: left image first, right image second.');
+            if(files.length !== 2 && files.length !== 3) {
+                throw new Error('Please select two or three JPG/PNG images: left image first, middle image second if included, right image last.');
             }
             return {
                 left: await fileToDataUrl(files[0]),
-                right: await fileToDataUrl(files[1]),
+                middle: files.length === 3 ? await fileToDataUrl(files[1]) : null,
+                right: await fileToDataUrl(files[files.length - 1]),
                 name: files[0].name.toString().replace(/\.[^/.]+$/, '')
             };
         }
 
-        throw new Error('Please upload one MPO file, or two JPG/PNG files.');
+        throw new Error('Please upload one MPO file, or two/three JPG/PNG files.');
     }
 
     function isRasterImageFile(file) {
@@ -389,6 +416,26 @@
         verticalOffset = 0;
         adjustChanged();
         adjustChangedVert();
+    }
+
+    function updateFrameSettingsForImageSet() {
+        const toggle = document.getElementById('includeInterpolationFrame');
+        const label = toggle.closest('.settingToggle');
+        const labelText = label.querySelector('span:last-child');
+
+        if(middleImage) {
+            toggle.disabled = true;
+            toggle.checked = true;
+            includeInterpolationFrame = true;
+            label.classList.add('is-disabled');
+            labelText.innerText = 'Middle frame included';
+        }
+        else {
+            toggle.disabled = false;
+            label.classList.remove('is-disabled');
+            labelText.innerText = 'Interpolation frame';
+            includeInterpolationFrame = toggle.checked;
+        }
     }
 
     // Draw 2d images to canvas
@@ -529,6 +576,8 @@
         const leftDrawY = cropStartY * -1;
         const rightDrawX = rightX - cropStartX;
         const rightDrawY = rightY - cropStartY;
+        const middleDrawX = (rightX / 2) - cropStartX;
+        const middleDrawY = (rightY / 2) - cropStartY;
 
         function drawAlignedFrame(ctx, leftAlpha, rightAlpha) {
             ctx.clearRect(0, 0, crop_width, crop_height);
@@ -548,7 +597,13 @@
         const ctx_crop3 = frame_crop3.getContext('2d');
 
         drawAlignedFrame(ctx_crop1, 1, 0);
-        drawAlignedFrame(ctx_crop2, 1, 0.5);
+        if(middleImage) {
+            ctx_crop2.clearRect(0, 0, crop_width, crop_height);
+            ctx_crop2.drawImage(middleImage, middleDrawX, middleDrawY, canvasWidth, canvasHeight);
+        }
+        else {
+            drawAlignedFrame(ctx_crop2, 1, 0.5);
+        }
         drawAlignedFrame(ctx_crop3, 0, 1);
 
         var encoder = new GIFEncoder();

@@ -252,10 +252,16 @@ input[type="range"] {
 #instructionsModal {
     z-index: 3;
     display: none;
+    align-items: flex-start;
+    overflow-y: auto;
 }
 
 #initialModal {
     display: flex;
+}
+
+#instructionsModal .mainPopup {
+    flex-shrink: 0;
 }
 
 .mainPopup,
@@ -511,6 +517,14 @@ input[type="range"] {
 .settingToggle input:focus-visible + .toggleMark {
     outline: 3px solid rgba(36, 119, 230, 0.28);
     outline-offset: 3px;
+}
+
+.settingToggle.is-disabled {
+    color: var(--muted);
+}
+
+.settingToggle.is-disabled .toggleMark {
+    opacity: 0.72;
 }
 
 #createGifContainer {
